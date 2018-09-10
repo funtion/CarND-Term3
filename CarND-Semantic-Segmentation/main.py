@@ -59,15 +59,16 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     """
     # TODO: Implement function
     kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3)
+    kernal_initializer = tf.truncated_normal_initializer(stddev=0.01)
 
-    conv_1x1_7 = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, padding='same', kernel_regularizer=kernel_regularizer, name='fcn_0')
-    up_sample7 = tf.layers.conv2d_transpose(conv_1x1_7, num_classes, 4, 2, padding='same', kernel_regularizer=kernel_regularizer, name='fcn_1')
-    conv_1x1_4 = tf.layers.conv2d(vgg_layer4_out, num_classes, 1, padding='same', kernel_regularizer=kernel_regularizer, name='fcn_2')
+    conv_1x1_7 = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, padding='same', kernel_regularizer=kernel_regularizer, name='fcn_0', kernel_initializer=kernal_initializer)
+    up_sample7 = tf.layers.conv2d_transpose(conv_1x1_7, num_classes, 4, 2, padding='same', kernel_regularizer=kernel_regularizer, name='fcn_1', kernel_initializer=kernal_initializer)
+    conv_1x1_4 = tf.layers.conv2d(vgg_layer4_out, num_classes, 1, padding='same', kernel_regularizer=kernel_regularizer, name='fcn_2', kernel_initializer=kernal_initializer)
     combine_74 = tf.add(up_sample7, conv_1x1_4, name='fcn_3')
-    up_sample74 = tf.layers.conv2d_transpose(combine_74, num_classes, 4, 2, padding='same', kernel_regularizer=kernel_regularizer, name='fcn_4')
-    conv_1x1_3 = tf.layers.conv2d(vgg_layer3_out, num_classes, 1, padding='same', kernel_regularizer=kernel_regularizer, name='fcn_5')
+    up_sample74 = tf.layers.conv2d_transpose(combine_74, num_classes, 4, 2, padding='same', kernel_regularizer=kernel_regularizer, name='fcn_4', kernel_initializer=kernal_initializer)
+    conv_1x1_3 = tf.layers.conv2d(vgg_layer3_out, num_classes, 1, padding='same', kernel_regularizer=kernel_regularizer, name='fcn_5', kernel_initializer=kernal_initializer)
     combine_374 = tf.add(up_sample74, conv_1x1_3, name='fcn_6')
-    up_sample374 = tf.layers.conv2d_transpose(combine_374, num_classes, 16, 8, padding='same', kernel_regularizer=kernel_regularizer, name='fcn_7')
+    up_sample374 = tf.layers.conv2d_transpose(combine_374, num_classes, 16, 8, padding='same', kernel_regularizer=kernel_regularizer, name='fcn_7', kernel_initializer=kernal_initializer)
 
     return up_sample374
 
@@ -87,13 +88,15 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     logits = tf.reshape(nn_last_layer, (-1, num_classes))
     correct_label = tf.reshape(correct_label, (-1, num_classes))
     cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=correct_label))
+    l2_loss = tf.losses.get_regularization_loss()
+    loss = cross_entropy_loss + l2_loss
     # tvars = tf.trainable_variables()
     #fcn_vars = [var for var in tvars if 'fcn_' in var.name]
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
     #train_op = optimizer.minimize(cross_entropy_loss, var_list=fcn_vars)
-    train_op = optimizer.minimize(cross_entropy_loss)
-    tf.summary.histogram("Training loss", cross_entropy_loss)
-    return logits, train_op, cross_entropy_loss
+    train_op = optimizer.minimize(loss)
+    tf.summary.histogram("Training loss", loss)
+    return logits, train_op, loss
 tests.test_optimize(optimize)
 
 
